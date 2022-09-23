@@ -1,0 +1,82 @@
+library identifier: 'neom-jenkins-sharedlib-dockerbuild@feature/ocir-change', retriever: modernSCM([$class: 'GitSCMSource',
+   remote: 'https://github.com/NEOM-KSA/neom-jenkins-sharedlib-dockerbuild.git',
+   credentialsId: 'github_token'])
+   
+library identifier: 'neom-jenkins-sharedlib-terraform@feature/oci-tf-shared-lib', retriever: modernSCM([$class: 'GitSCMSource',
+   remote: 'https://github.com/NEOM-KSA/neom-jenkins-sharedlib-terraform.git',
+   credentialsId: 'github_token'])
+
+
+credentialsId: 'github_token'])
+
+pipeline {
+  agent {
+    kubernetes {
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        spec:
+          containers:
+          - name: podman
+            imagePullPolicy: Always
+            image: jed.ocir.io/axssefozft8h/podman-trivy-oci:latest
+            command:
+            - cat
+            tty: true
+            securityContext:
+              privileged: true
+            volumeMounts:
+            - mountPath: /var/lib/containers
+              name: podman-volume
+            - mountPath: /dev/shm
+              name: devshm-volume
+            - mountPath: /var/run
+              name: varrun-volume
+            - mountPath: /tmp
+              name: tmp-volume
+			  
+			   stage('Code Build') {
+      steps {
+        container('build') {
+          sh "./gradlew clean build"
+        }
+      }
+    }
+
+
+    stage('Docker Image Build') {
+      steps {
+        script{
+               container('podman') {
+               podmanBuild("jed.ocir.io", "axssefozft8h", "${projectName}", "${tag}", "${imagetype}")
+               }
+            }
+        }
+    }
+
+     stage('Docker Image scan') {
+              steps {
+                script{
+                      container('podman') {
+                            trivyScanocr("jed.ocir.io", "axssefozft8h", "${projectName}", "${tag}", "${imagetype}")
+                     }
+                }
+             }
+     }
+
+    stage("Docker Image push") 
+           when{
+           	     branch 'master'
+               }
+          steps {
+                  script{
+                      container('podman') {
+                       tfci.config()
+                          podmanPush("bld-neompay-image-pushers", "jed.ocir.io", "axssefozft8h", "${projectName}", "${tag}", "${imagetype}")
+
+                      }
+                }
+           }
+    }
+			  
+		

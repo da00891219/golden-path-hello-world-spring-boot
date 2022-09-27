@@ -1,0 +1,25 @@
+ library identifier: 'neom-jenkins-sharedlib-owasp-zap-scan-jenkins-sharedlib@master', retriever: modernSCM([$class: 'GitSCMSource',
+remote: 'https://github.com/NEOM-KSA/neom-jenkins-sharedlib-owasp-zap-scan-jenkins-sharedlib.git',
+credentialsId: 'github_token'])
+
+library identifier: 'neom-jenkins-sharedlib-trufflehog_nix@master', retriever: modernSCM([$class: 'GitSCMSource',
+   remote: 'https://github.com/NEOM-KSA/neom-jenkins-sharedlib-trufflehog_nix.git',
+   credentialsId: 'github_token'])
+   
+ stage('Starting Zap Proxy') {
+	      when{
+	          branch 'master'
+         }
+                    steps {
+                        echo "*********************** Starting ZAP proxy ***********************************"
+                        script {
+                            container("owasp-zap")  {
+                                runOwaspZapProxy()
+                            }
+                        }
+                    }
+                }
+   stage('Deploy') {
+    when{
+	      branch 'master'
+      }
